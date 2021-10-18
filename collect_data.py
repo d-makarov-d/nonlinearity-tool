@@ -16,10 +16,12 @@ class Expo:
         self.flats = flats
         self.darks = darks
 
-    def apply_indices(self, indices: tuple[tuple[int]]) -> np.ndarray:
+    def apply_indices(self, indices: tuple[tuple[int]], nonuniformity: np.ndarray=None) -> np.ndarray:
         """Applies indices, and calculates 'lights' = <flats> - <darks> and errors"""
         # apply indices and transform list of arrays in 2-d array, where ich row is one experiment
-        f_cut = np.array(list(map(lambda el: el[indices], self.flats)))
+        if nonuniformity is None:
+            nonuniformity = 1
+        f_cut = np.array(list(map(lambda el: el[indices], self.flats))) * nonuniformity
         d_cut = np.array(list(map(lambda el: el[indices], self.darks)))
 
         if f_cut.ndim > 1:

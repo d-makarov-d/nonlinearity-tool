@@ -9,9 +9,21 @@ from collect_data import process_folder, Expo
 
 class Area:
     """Holds number of pixels for different expositions"""
-    def __init__(self, expos: Iterable[Expo], indices: tuple[tuple[int]]):
+    def __init__(self, expos: Iterable[Expo], indices: tuple[tuple[int]], nonun=False):
+        nu = None
+        if nonun:
+            # compute nonuniformity
+            raw_pix = dict(map(
+                lambda e: (e.expo, e.apply_indices(indices)[0]),
+                expos
+            ))
+            raw_pix = dict(sorted(raw_pix.items()))
+            pix = np.array(tuple(map(lambda el: el, raw_pix.values())))
+            nu, _ = np.polyfit(np.array(tuple(raw_pix.keys())), pix, 1)  # nonuniformity
+            nu = np.mean(nu) / nu
+
         exp_2_light = dict(map(
-            lambda e: (e.expo, e.apply_indices(indices)),
+            lambda e: (e.expo, e.apply_indices(indices, nu)),
             expos
         ))
         # sort by expositions (aka sort by key)
@@ -102,7 +114,9 @@ if __name__ == "__main__":
                         help='If set, parses all subdirectories')
     parser.add_argument('-m', '--model', required=True,
                         help='File, describing area to analise')
-    disp_parser = parser.add_subparsers().add_parser('disp', help='Display options')
+    parser.add_argument('-n', '--nonun', default=False, action='store_true',
+                        help='Correct nonuniformity')
+    disp_parser = parser.add_subparsers(dest='disp').add_parser('disp', help='Display options')
     subparsers = disp_parser.add_subparsers(dest='type')
     pix_parser = subparsers.add_parser('pix', help='Dependency for each pixel and average')
     linear_parser = subparsers.add_parser('linear', help='Linear approximation of the dependency')
@@ -126,12 +140,13 @@ if __name__ == "__main__":
     expos = process_folder(args.folder, args.r)
     indices = process_area_file(args.model)
 
-    area = Area(expos, indices)
+    area = Area(expos, indices, args.nonun)
     for args in arguments:
-        if args.type == 'pix':
-            area.draw_pix()
-        elif args.type == 'linear':
-            area.draw_linear()
-        elif args.type == 'nl':
-            area.draw_nonlinearity(args.x, args.all, args.p)
+        if args.disp is not None:
+            if args.type == 'pix':
+                area.draw_pix()
+            elif args.type == 'linear':
+                area.draw_linear()
+            elif args.type == 'nl':
+                area.draw_nonlinearity(args.x, args.all, args.p)
     plt.show()
